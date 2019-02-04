@@ -1,0 +1,40 @@
+name:                rpw
+version:             0.1.0.0
+github:              "thalesmg/rpw"
+license:             GPLv3
+author:              "Thales Macedo Garitezi"
+maintainer:          "thalesmg@gmail.com"
+copyright:           "GPLv3"
+
+extra-source-files:
+  - README.md
+  - ChangeLog.md
+
+synopsis:            "Cache password for sudo and ansible"
+category:            Utils
+
+description:         Please see the README on GitHub at <https://github.com/thalesmg/rpw#README.md>
+
+dependencies:
+  - base >= 4.7 && < 5
+  - bytestring
+  - regex-posix
+  - unix
+  - async
+  - terminal-size
+  - posix-pty
+
+ghc-options:
+  - -threaded
+  - -rtsopts
+  - -with-rtsopts=-N
+  - -Wall -Wno-name-shadowing
+
+executables:
+  rpw:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
