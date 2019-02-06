@@ -24,6 +24,11 @@ dependencies:
   - terminal-size
   - posix-pty
 
+flags:
+  rpw_dist:
+    manual: true
+    default: false
+
 ghc-options:
   - -threaded
   - -rtsopts
@@ -38,3 +43,9 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+    when:
+      - condition: flag(rpw_dist)
+        ld-options: -static
+        ghc-options:
+          - -O3
+          - -fPIC
