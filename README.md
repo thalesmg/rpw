@@ -15,7 +15,8 @@ $ stack install
 ```bash
 $ rpw bash
 $ sudo echo hello!
-[sudo] password for foobar: (rpw..sudo) <-        # type your password and end with C-j
+[sudo] password for foobar: (rpw..sudo) <-        # type your password and
+                                                  # end with `Enter`, `C-j` or `C-m`
 hello!
 $ sudo -k
 $ sudo echo hello!
@@ -36,6 +37,5 @@ SUDO password: <- (rpw..cached)                   # no need to type here!
 
 ## TODO
 
-- [ ] Find out why we need to `C-j` to enter the password, or why `Enter` does not work. 🤔
 - [ ] Allow resetting the password without exiting the shell.
 - [ ] Emit `SIGWINCH` to the slave terminal when needed.

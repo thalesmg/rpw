@@ -114,19 +114,6 @@ main = do
   handle
     ((\_ -> signalProcess softwareTermination pid) :: SomeException -> IO ()) $
     withoutEcho $ do
-      masterPts <- getTerminalName stdInput
-      -- prepare user terminal to control the slave
-      void $
-        getProcessStatus True False =<<
-        forkProcess
-          (executeFile
-             "sh"
-             True
-             [ "-c"
-             , "/bin/stty raw -echo -echoctl -echok -echoke -echoe -iexten -onlcr < " <>
-               masterPts
-             ]
-             (Just env))
       master <- forkIO $ masterLoop masterH "" Nothing regex
       -- forward C-c to slave
       _ <-
