@@ -21,8 +21,7 @@ import           System.Posix.IO              (FdOption (..), OpenMode (..),
 import           System.Posix.Process         (createSession, executeFile,
                                                forkProcess, getProcessStatus)
 import           System.Posix.Pty             (createPty, resizePty)
-import           System.Posix.Signals         (Handler (..), installHandler,
-                                               keyboardSignal, signalProcess,
+import           System.Posix.Signals         (signalProcess,
                                                softwareTermination)
 import           System.Posix.Terminal        (getTerminalName,
                                                openPseudoTerminal)
@@ -48,10 +47,6 @@ slave slaveFd env cmd args = do
   void $ dupTo slaveFd' stdError
   -- prepare slave terminal attributes
   fdToHandle slaveFd' >>= flip hSetBuffering NoBuffering
-  void $
-    getProcessStatus True False =<<
-    forkProcess
-      (executeFile "sh" True ["-c", "/bin/stty sane < " <> ptsSlave] (Just env))
   executeFile cmd True args (Just env)
 
 masterLoop :: Handle -> C8.ByteString -> Maybe C8.ByteString -> R.Regex -> IO ()
@@ -115,15 +110,19 @@ main = do
     ((\_ -> signalProcess softwareTermination pid) :: SomeException -> IO ()) $
     withoutEcho $ do
       master <- forkIO $ masterLoop masterH "" Nothing regex
-      -- forward C-c to slave
-      _ <-
-        installHandler
-          keyboardSignal
-          (Catch $ signalProcess keyboardSignal pid)
-          Nothing
       -- resize the terminal
       Just pty <- createPty masterFd
       resizePty pty (width, height)
+      -- forward C-c to slave
+      masterTty <- getTerminalName stdInput
+      void $
+        getProcessStatus True False =<<
+        forkProcess
+          (executeFile
+             "sh"
+             True
+             ["-c", "/bin/stty -isig < " <> masterTty]
+             (Just env))
       -- wait and cleanup
       _ <- getProcessStatus True False pid
       killThread master
