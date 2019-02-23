@@ -23,8 +23,13 @@ import           System.Posix.Process         (createSession, executeFile,
 import           System.Posix.Pty             (createPty, resizePty)
 import           System.Posix.Signals         (signalProcess,
                                                softwareTermination)
-import           System.Posix.Terminal        (getTerminalName,
-                                               openPseudoTerminal)
+import           System.Posix.Terminal        (TerminalMode (..),
+                                               TerminalState (..),
+                                               getTerminalAttributes,
+                                               getTerminalName,
+                                               openPseudoTerminal,
+                                               setTerminalAttributes,
+                                               withoutMode)
 import           System.Posix.Types           (Fd (..))
 import qualified Text.Regex.Posix.ByteString  as R
 
@@ -114,15 +119,8 @@ main = do
       Just pty <- createPty masterFd
       resizePty pty (width, height)
       -- forward C-c to slave
-      masterTty <- getTerminalName stdInput
-      void $
-        getProcessStatus True False =<<
-        forkProcess
-          (executeFile
-             "sh"
-             True
-             ["-c", "/bin/stty -isig < " <> masterTty]
-             (Just env))
+      masterAttrs <- flip withoutMode KeyboardInterrupts <$> getTerminalAttributes stdInput
+      setTerminalAttributes stdInput masterAttrs Immediately
       -- wait and cleanup
       _ <- getProcessStatus True False pid
       killThread master
