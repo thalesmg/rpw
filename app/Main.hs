@@ -3,10 +3,11 @@
 
 module Main where
 
-import           Control.Concurrent           (forkIO, killThread)
-import           Control.Concurrent.Async     (race)
+import           Control.Concurrent.Async     (withAsync)
+import           Control.Concurrent.Chan      (Chan, newChan, readChan,
+                                               writeChan)
 import           Control.Exception            (SomeException, bracket_, handle)
-import           Control.Monad                (void)
+import           Control.Monad                (forever, void)
 import qualified Data.ByteString.Char8        as C8
 import           System.Console.Terminal.Size (Window (..), size)
 import           System.Environment           (getArgs, getEnvironment)
@@ -33,6 +34,9 @@ import           System.Posix.Terminal        (TerminalMode (..),
 import           System.Posix.Types           (Fd (..))
 import qualified Text.Regex.Posix.ByteString  as R
 
+data CtlSignal = CtlSignal
+data SyncSignal = SyncSignal
+
 withoutEcho :: IO () -> IO ()
 withoutEcho act = do
   oldEcho <- hGetEcho stdin
@@ -54,38 +58,55 @@ slave slaveFd env cmd args = do
   fdToHandle slaveFd' >>= flip hSetBuffering NoBuffering
   executeFile cmd True args (Just env)
 
-masterLoop :: Handle -> C8.ByteString -> Maybe C8.ByteString -> R.Regex -> IO ()
-masterLoop masterH buf mpass regex = do
-  i <- race (C8.hGetSome masterH 4096) (C8.hGetSome stdin 4096)
-  case i of
-    Left c
-    -- slave -> user stdout
-     -> do
-      C8.hPutStr stdout c
-      let buf' =
-            if c == "\n"
-              then ""
-              else buf <> c
-      (buf'', mpass') <-
-        R.execute regex buf' >>= \case
-          Right (Just _) ->
-            case mpass of
-              Just pass -> do
-                C8.hPutStr stdout "<- (rpw..cached) "
-                C8.hPutStrLn masterH pass
-                pure ("", Just pass)
-              Nothing -> do
-                C8.hPutStr stdout "(rpw..sudo) <- "
-                pass <- C8.hGetLine stdin
-                C8.hPutStrLn masterH pass
-                pure ("", Just pass)
-          _ -> pure (buf', mpass)
-      masterLoop masterH buf'' mpass' regex
-    Right c
-    -- user stdin -> slave
-     -> do
-      C8.hPutStr masterH c
-      masterLoop masterH buf mpass regex
+supervisorLoop :: Handle -> C8.ByteString -> Maybe C8.ByteString -> R.Regex -> IO ()
+supervisorLoop masterH buf mpass regex = do
+  ctlChan <- newChan
+  syncChan <- newChan
+  void $ withAsync (writeLoop masterH buf mpass regex ctlChan syncChan) $ \_ -> do
+    let go = withAsync (readLoop masterH) $ \_ -> readChan ctlChan
+    forever $ do
+      void go
+      writeChan syncChan SyncSignal
+      void $ readChan ctlChan
+
+readLoop :: Handle -> IO ()
+readLoop masterH = forever $ C8.hGetSome stdin 4096 >>= C8.hPutStr masterH
+
+writeLoop :: Handle
+          -> C8.ByteString
+          -> Maybe C8.ByteString
+          -> R.Regex
+          -> Chan CtlSignal
+          -> Chan SyncSignal
+          -> IO ()
+writeLoop masterH buf mpass regex ctlChan syncChan = do
+  c <- C8.hGetSome masterH 4096
+  C8.hPutStr stdout c
+  let buf' =
+        if c == "\n"
+          then ""
+          else buf <> c
+  (buf'', mpass') <-
+    R.execute regex buf' >>= \case
+      Right (Just _) ->
+        case mpass of
+          Just pass -> do
+            C8.hPutStr stdout "<- (rpw..cached) "
+            C8.hPutStrLn masterH pass
+            pure ("", Just pass)
+          Nothing -> do
+            C8.hPutStr stdout "(rpw..sudo) <- "
+            -- stop the reader so it doesn't gobble up the password
+            writeChan ctlChan CtlSignal
+            -- wait for it to be stopped
+            void $ readChan syncChan
+            pass <- C8.hGetLine stdin
+            C8.hPutStrLn masterH pass
+            -- start the reader again.
+            writeChan ctlChan CtlSignal
+            pure ("", Just pass)
+      _ -> pure (buf', mpass)
+  writeLoop masterH buf'' mpass' regex ctlChan syncChan
 
 main :: IO ()
 main = do
@@ -113,8 +134,8 @@ main = do
   -- no need for echo: our slave will tell us what to print
   handle
     ((\_ -> signalProcess softwareTermination pid) :: SomeException -> IO ()) $
-    withoutEcho $ do
-      master <- forkIO $ masterLoop masterH "" Nothing regex
+    withoutEcho $
+      withAsync (supervisorLoop masterH "" Nothing regex) $ \_ -> do
       -- resize the terminal
       Just pty <- createPty masterFd
       resizePty pty (width, height)
@@ -122,5 +143,4 @@ main = do
       masterAttrs <- flip withoutMode KeyboardInterrupts <$> getTerminalAttributes stdInput
       setTerminalAttributes stdInput masterAttrs Immediately
       -- wait and cleanup
-      _ <- getProcessStatus True False pid
-      killThread master
+      void $ getProcessStatus True False pid
