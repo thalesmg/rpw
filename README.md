@@ -1,4 +1,4 @@
-# rpw ![](https://travis-ci.org/thalesmg/rpw.svg?branch=master)
+# rpw [![Build Status](https://travis-ci.org/thalesmg/rpw.svg?branch=master)](https://travis-ci.org/thalesmg/rpw)
 
 This is a Haskell implementation of [`cache-pw`](https://gitlab.com/dgvncsz0f/dot/blob/master/roles/bash/files/bin/cache-pw).
 
