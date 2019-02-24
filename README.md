@@ -2,6 +2,8 @@
 
 This is a Haskell implementation of [`cache-pw`](https://gitlab.com/dgvncsz0f/dot/blob/master/roles/bash/files/bin/cache-pw).
 
+![](./demo.gif)
+
 ## How to install
 
 You need [Stack](https://docs.haskellstack.org/en/stable/README/).
