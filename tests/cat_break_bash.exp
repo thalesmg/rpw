@@ -1,0 +1,46 @@
+#!/usr/bin/expect -f
+
+set prompt ":$"
+set timeout 1
+set curdir $env(PWD)
+
+spawn -noecho rpw bash
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect -re $prompt
+
+send "cat\r"
+expect {
+    "cat\r\n" { }
+    timeout { puts "timeout after command"; exit 1 }
+}
+expect {
+    -re "^$" { }
+    timeout { puts "timeout waiting for cat"; exit 1 }
+}
+send "a"
+expect -re "^a$"
+send \r
+expect \r\n
+expect {
+    -re "^a\r\n$" { }
+    timeout { puts "timeout expecting input"; exit 1 }
+}
+
+# C-c
+send \u0003\r
+
+# rpw must be still alive
+expect {
+    -re $prompt { }
+    timeout { puts "error after sending C-c"; exit 1 }
+}
+send "echo \$PWD\r"
+expect {
+    "echo \$PWD\r\n" { }
+    timeout { puts "timeout expecting last command"; exit 1 }
+}
+expect {
+    "$curdir\r\n" { puts "OK" }
+    timeout { "timeout expecting last ouptut"; exit 1 }
+}

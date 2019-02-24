@@ -1,0 +1,53 @@
+#!/usr/bin/expect -f
+
+set prompt ":"
+set timeout 2
+set stty_init raw
+
+spawn -noecho env ZDOTDIR=$env(PWD)/tests/ rpw zsh
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect *
+send \n
+expect {
+    $prompt { }
+    timeout { puts "startup error"; exit 1 }
+}
+
+send "cat\r"
+expect {
+    "cat\r\n" { }
+    timeout { puts "timeout sending command"; exit 1 }
+}
+expect {
+    "^$" { }
+    timeout { puts "timeout waiting for cat"; exit 1 }
+}
+
+send "a"
+expect {
+    -re "^a$" { }
+    timeout { puts "timeout expecting input"; exit 1 }
+}
+send \r
+expect \r\n
+expect {
+    -re "\r\na\r\n" { }
+    timeout { puts "timeout expecting echo"; exit 1 }
+}
+
+# send \u000d
+# send \n
+# expect {
+#     -re "^a\r\r\n$" { }
+#     timeout { puts "timeout expecting echo"; exit 1 }
+# }
+
+# C-d
+send \u0004
+send \n
+
+expect {
+    $prompt { puts "OK" }
+    timeout { puts "error after sending C-d"; exit 1 }
+}

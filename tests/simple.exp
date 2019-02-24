@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+
+set prompt ":$"
+set timeout 1
+set username $env(USER)
+
+spawn -noecho rpw bash
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect *
+send \n
+expect -re $prompt
+
+send "echo oi \$USER\r"
+expect {
+    "echo oi \$USER\r\n" { }
+    timeout { puts "timeout after command"; exit 1 }
+}
+expect {
+    "oi $username\r\n" { }
+    timeout { puts "timeout while waiting echo"; exit 1 }
+}
+expect {
+    -re $prompt { puts "OK" }
+    timeout { puts "timeout after echo"; exit 1 }
+}
