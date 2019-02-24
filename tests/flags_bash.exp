@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 
 set prompt ":$"
-set timeout 1
+set timeout 2
 
 spawn -noecho rpw bash
 

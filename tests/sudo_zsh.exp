@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 
 set prompt ":"
-set timeout 1
+set timeout 2
 set password $env(rpw_test_password)
 
 spawn -noecho env ZDOTDIR=$env(PWD)/tests/ rpw zsh
@@ -28,6 +28,22 @@ send "$password\n"
 expect {
     "oi\r\n" { }
     timeout { puts "timeout expecting result"; exit 1 }
+}
+
+send "sudo -k\r"
+expect "sudo -k\r\n"
+send "sudo echo ola\r"
+expect {
+    "sudo echo ola\r\n" { }
+    timeout { puts "timeout sending command 2"; exit 1 }
+}
+expect {
+    "<- (rpw..cached) $" { }
+    timeout { puts "timeout waiting for cached prompt"; exit 1 }
+}
+expect {
+    "\r\nola\r\n" { }
+    timeout { puts "timeout waiting for final result"; exit 1 }
 }
 
 expect {
