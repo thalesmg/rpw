@@ -8,6 +8,3 @@ then
   echo 'rpwtest:rpwtest' | chpasswd
   echo 'rpwtest ALL=(ALL) ALL' >> /etc/sudoers
 fi
-
-# if [ "$(id -u test)" -ne "$userid" ]
-# then usermod -u "$userid" test; fi

@@ -29,8 +29,11 @@ import           System.Posix.Terminal        (getTerminalName,
 import           System.Posix.Types           (Fd (..))
 import qualified Text.Regex.Posix.ByteString  as R
 
-data CtlSignal = CtlSignal
-data SyncSignal = SyncSignal
+data CtlSignal =
+  CtlSignal
+
+data SyncSignal =
+  SyncSignal
 
 withoutEcho :: IO () -> IO ()
 withoutEcho act = do
@@ -51,30 +54,40 @@ slave slaveFd env cmd args = do
   void $ dupTo slaveFd' stdError
   -- prepare slave terminal attributes
   fdToHandle slaveFd' >>= flip hSetBuffering NoBuffering
-  void $ getProcessStatus True False =<< forkProcess (executeFile "/bin/sh" True ["-c", "stty brkint ignpar imaxbel isig icanon < " <> ptsSlave] (Just env))
+  void $
+    getProcessStatus True False =<<
+    forkProcess
+      (executeFile
+         "/bin/sh"
+         True
+         ["-c", "stty brkint ignpar imaxbel isig icanon < " <> ptsSlave]
+         (Just env))
   executeFile cmd True args (Just env)
 
-supervisorLoop :: Handle -> C8.ByteString -> Maybe C8.ByteString -> R.Regex -> IO ()
+supervisorLoop ::
+     Handle -> C8.ByteString -> Maybe C8.ByteString -> R.Regex -> IO ()
 supervisorLoop masterH buf mpass regex = do
   ctlChan <- newChan
   syncChan <- newChan
-  void $ withAsync (writeLoop masterH buf mpass regex ctlChan syncChan) $ \_ -> do
-    let go = withAsync (readLoop masterH) $ \_ -> readChan ctlChan
-    forever $ do
-      void go
-      writeChan syncChan SyncSignal
-      void $ readChan ctlChan
+  void $
+    withAsync (writeLoop masterH buf mpass regex ctlChan syncChan) $ \_ -> do
+      let go = withAsync (readLoop masterH) $ \_ -> readChan ctlChan
+      forever $ do
+        void go
+        writeChan syncChan SyncSignal
+        void $ readChan ctlChan
 
 readLoop :: Handle -> IO ()
 readLoop masterH = forever $ C8.hGetSome stdin 4096 >>= C8.hPutStr masterH
 
-writeLoop :: Handle
-          -> C8.ByteString
-          -> Maybe C8.ByteString
-          -> R.Regex
-          -> Chan CtlSignal
-          -> Chan SyncSignal
-          -> IO ()
+writeLoop ::
+     Handle
+  -> C8.ByteString
+  -> Maybe C8.ByteString
+  -> R.Regex
+  -> Chan CtlSignal
+  -> Chan SyncSignal
+  -> IO ()
 writeLoop masterH buf mpass regex ctlChan syncChan = do
   c <- C8.hGetSome masterH 4096
   C8.hPutStr stdout c
@@ -131,13 +144,23 @@ main = do
   handle
     ((\_ -> signalProcess softwareTermination pid) :: SomeException -> IO ()) $
     withoutEcho $
-      withAsync (supervisorLoop masterH "" Nothing regex) $ \_ -> do
+    withAsync (supervisorLoop masterH "" Nothing regex) $ \_
       -- resize the terminal
+     -> do
       Just pty <- createPty masterFd
       resizePty pty (width, height)
       -- forward C-c to slave
       masterPts <- getTerminalName stdInput
-      void $ getProcessStatus True False =<< forkProcess (executeFile "/bin/sh" True ["-c", "stty icrnl -ignpar -imaxbel -brkint -ixon -iutf8 -isig -opost -onlcr -iexten -echo -echoe -echok -echoctl -echoke < " <> masterPts] (Just env))
-      -- void $ getProcessStatus True False =<< forkProcess (executeFile "/bin/sh" True ["-c", "stty sane < " <> masterPts] (Just env))
+      void $
+        getProcessStatus True False =<<
+        forkProcess
+          (executeFile
+             "/bin/sh"
+             True
+             [ "-c"
+             , "stty icrnl -ignpar -imaxbel -brkint -ixon -iutf8 -isig -opost -onlcr -iexten -echo -echoe -echok -echoctl -echoke < " <>
+               masterPts
+             ]
+             (Just env))
       -- wait and cleanup
       void $ getProcessStatus True False pid
