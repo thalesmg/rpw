@@ -34,11 +34,11 @@ send "sudo -k\r"
 expect "sudo -k\r\n"
 send "sudo echo ola\r"
 expect {
-    "sudo echo ola\r\n" { }
+    -re "sudo echo ola.*\r\n" { }
     timeout { puts "timeout sending command 2"; exit 1 }
 }
 expect {
-    "<- (rpw..cached) $" { }
+    "<- (rpw..cached) " { }
     timeout { puts "timeout waiting for cached prompt"; exit 1 }
 }
 expect {

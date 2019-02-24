@@ -19,7 +19,7 @@ expect {
     timeout { puts "timeout waiting for command"; exit 1 }
 }
 expect {
-    "\r\n569XZims\r\n" { }
+    -re "\r\n569XZims.*\r\n" { }
     timeout { puts "timeout while waiting echo"; exit 1 }
 }
 expect {

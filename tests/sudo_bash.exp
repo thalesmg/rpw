@@ -38,7 +38,7 @@ expect {
     timeout { puts "timeout sending command 2"; exit 1 }
 }
 expect {
-    "<- (rpw..cached) $" { }
+    "<- (rpw..cached) " { }
     timeout { puts "timeout waiting for cached prompt"; exit 1 }
 }
 expect {
