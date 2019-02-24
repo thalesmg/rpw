@@ -15,6 +15,23 @@ def find_tests():
             output.add(t)
     return output
 
+def run_retrying(test_path, fuel=4, old_attrs=None):
+    print("{}... ".format(test_path), end="")
+    last_failure = None
+    for _ in range(fuel):
+        res = subprocess.run([test_path], check=False, stdout=subprocess.PIPE)
+        if old_attrs:
+            termios.tcsetattr(sys.stdin, termios.TCSANOW, old_attrs)
+        if res.returncode == 0:
+            print("OK")
+            return False
+        else:
+            last_failure = res.stdout.decode("utf-8")
+    print("ERROR")
+    if last_failure:
+        print(last_failure)
+    return True
+
 if __name__ == "__main__":
     old_attrs = termios.tcgetattr(sys.stdin) if os.isatty(0) else None
     failure = False
@@ -22,16 +39,8 @@ if __name__ == "__main__":
         # "./tests/cat_break.exp"
     }
     for t in find_tests().difference(blacklist):
-        print("{}... ".format(t), end="")
-        res = subprocess.run([t], check=False, stdout=subprocess.PIPE)
-        if old_attrs:
-            termios.tcsetattr(sys.stdin, termios.TCSANOW, old_attrs)
-        if res.returncode == 0:
-            print("OK")
-        else:
-            failure = True
-            print("ERROR!")
-            print(res.stdout.decode("utf-8"))
+        result = run_retrying(t, old_attrs=old_attrs)
+        failure = failure or result
     if failure:
         print("ERRORS!")
         exit(1)
