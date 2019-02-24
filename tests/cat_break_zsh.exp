@@ -25,7 +25,7 @@ expect -re "^a$"
 send \r
 expect \r\n
 expect {
-    -re "\r\na\r\n$" { }
+    -re "\r\na.*\r\n$" { }
     timeout { puts "timeout expecting input"; exit 1 }
 }
 
