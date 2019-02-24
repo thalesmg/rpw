@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+cd /mnt
+
+./ext/bin/bootstrap
+
+cp ./rpw /bin/rpw
+
+su rpwtest <<EOF
+  export rpw_test_password=rpwtest
+  export PATH="$PWD/bin:$PATH"
+  ./run_tests.py
+EOF

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -e
+
+if ! getent passwd test 2>/dev/null >/dev/null
+then
+  adduser -s /bin/bash -u $userid -h /home/test -D rpwtest
+  echo 'rpwtest:rpwtest' | chpasswd
+  echo 'rpwtest ALL=(ALL) ALL' >> /etc/sudoers
+fi
+
+# if [ "$(id -u test)" -ne "$userid" ]
+# then usermod -u "$userid" test; fi

@@ -23,13 +23,8 @@ import           System.Posix.Process         (createSession, executeFile,
 import           System.Posix.Pty             (createPty, resizePty)
 import           System.Posix.Signals         (signalProcess,
                                                softwareTermination)
-import           System.Posix.Terminal        (TerminalMode (..),
-                                               TerminalState (..),
-                                               getTerminalAttributes,
-                                               getTerminalName,
-                                               openPseudoTerminal,
-                                               setTerminalAttributes,
-                                               withoutMode)
+import           System.Posix.Terminal        (getTerminalName,
+                                               openPseudoTerminal)
 import           System.Posix.Types           (Fd (..))
 import qualified Text.Regex.Posix.ByteString  as R
 
@@ -52,6 +47,7 @@ slave slaveFd env cmd args = do
   void $ dupTo slaveFd' stdError
   -- prepare slave terminal attributes
   fdToHandle slaveFd' >>= flip hSetBuffering NoBuffering
+  void $ getProcessStatus True False =<< forkProcess (executeFile "/bin/sh" True ["-c", "stty brkint ignpar imaxbel isig icanon < " <> ptsSlave] (Just env))
   executeFile cmd True args (Just env)
 
 masterLoop :: Handle -> C8.ByteString -> Maybe C8.ByteString -> R.Regex -> IO ()
@@ -112,15 +108,16 @@ main = do
   pid <- forkProcess (slave slaveFd env cmd args)
   -- no need for echo: our slave will tell us what to print
   handle
-    ((\_ -> signalProcess softwareTermination pid) :: SomeException -> IO ()) $
-    withoutEcho $ do
+    ((\_ -> signalProcess softwareTermination pid) :: SomeException -> IO ()) $ do
+    -- withoutEcho $ do
       master <- forkIO $ masterLoop masterH "" Nothing regex
       -- resize the terminal
       Just pty <- createPty masterFd
       resizePty pty (width, height)
       -- forward C-c to slave
-      masterAttrs <- flip withoutMode KeyboardInterrupts <$> getTerminalAttributes stdInput
-      setTerminalAttributes stdInput masterAttrs Immediately
+      masterPts <- getTerminalName stdInput
+      void $ getProcessStatus True False =<< forkProcess (executeFile "/bin/sh" True ["-c", "stty icrnl -ignpar -imaxbel -brkint -ixon -iutf8 -isig -opost -onlcr -iexten -echo -echoe -echok -echoctl -echoke < " <> masterPts] (Just env))
+      -- void $ getProcessStatus True False =<< forkProcess (executeFile "/bin/sh" True ["-c", "stty sane < " <> masterPts] (Just env))
       -- wait and cleanup
       _ <- getProcessStatus True False pid
       killThread master

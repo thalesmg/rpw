@@ -1,0 +1,28 @@
+#!/usr/bin/expect -f
+
+set prompt ":"
+set timeout 2
+
+spawn -noecho env ZDOTDIR=$env(PWD)/tests/ rpw zsh
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect *
+expect {
+    $prompt { }
+    timeout { puts "startup error"; exit 1 }
+}
+expect *
+
+send "echo \$-\r"
+expect {
+    "echo \$-\r\n" { }
+    timeout { puts "timeout waiting for command"; exit 1 }
+}
+expect {
+    "\r\n569XZims\r\n" { }
+    timeout { puts "timeout while waiting echo"; exit 1 }
+}
+expect {
+    -re $prompt { puts "OK" }
+    timeout { puts "timeout after echo"; exit 1 }
+}
