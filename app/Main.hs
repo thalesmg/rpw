@@ -1,12 +1,13 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
+module Main (main) where
 
-import           Control.Concurrent.Async     (withAsync)
+import           Control.Concurrent.Async     (withAsync, race)
 import           Control.Concurrent.Chan      (Chan, newChan, readChan,
                                                writeChan)
-import           Control.Exception            (SomeException, bracket_, handle)
+import Control.Concurrent.MVar (MVar, newMVar, withMVar, takeMVar, putMVar)
+import           Control.Exception            (SomeException, bracket_, handle, finally)
 import           Control.Monad                (forever, void)
 import qualified Data.ByteString.Char8        as C8
 import           System.Console.Terminal.Size (Window (..), size)
@@ -23,9 +24,9 @@ import           System.Posix.Process         (createSession, executeFile,
                                                forkProcess, getProcessStatus)
 import           System.Posix.Pty             (createPty, resizePty)
 import           System.Posix.Signals         (signalProcess,
-                                               softwareTermination)
+                                               softwareTermination, installHandler, keyboardSignal, Handler(..))
 import           System.Posix.Terminal        (getTerminalName,
-                                               openPseudoTerminal)
+                                               openPseudoTerminal, getTerminalAttributes, setTerminalAttributes, withMode, TerminalMode(..), TerminalState(..))
 import           System.Posix.Types           (Fd (..))
 import qualified Text.Regex.Posix.ByteString  as R
 
@@ -65,12 +66,17 @@ slave slaveFd env cmd args = do
   executeFile cmd True args (Just env)
 
 supervisorLoop ::
-     Handle -> C8.ByteString -> Maybe C8.ByteString -> R.Regex -> IO ()
-supervisorLoop masterH buf mpass regex = do
+     Handle
+  -> MVar ()
+  -> C8.ByteString
+  -> Maybe C8.ByteString
+  -> R.Regex
+  -> IO ()
+supervisorLoop masterH readPassMVar buf mpass regex = do
   ctlChan <- newChan
   syncChan <- newChan
   void $
-    withAsync (writeLoop masterH buf mpass regex ctlChan syncChan) $ \_ -> do
+    withAsync (writeLoop masterH buf mpass regex ctlChan syncChan readPassMVar) $ \_ -> do
       let go = withAsync (readLoop masterH) $ \_ -> readChan ctlChan
       forever $ do
         void go
@@ -87,8 +93,9 @@ writeLoop ::
   -> R.Regex
   -> Chan CtlSignal
   -> Chan SyncSignal
+  -> MVar ()
   -> IO ()
-writeLoop masterH buf mpass regex ctlChan syncChan = do
+writeLoop masterH buf mpass regex ctlChan syncChan readPassMVar = do
   c <- C8.hGetSome masterH 4096
   C8.hPutStr stdout c
   let buf' =
@@ -109,13 +116,43 @@ writeLoop masterH buf mpass regex ctlChan syncChan = do
             writeChan ctlChan CtlSignal
             -- wait for it to be stopped
             void $ readChan syncChan
-            pass <- C8.hGetLine stdin
-            C8.hPutStrLn masterH pass
-            -- start the reader again.
-            writeChan ctlChan CtlSignal
-            pure ("", Just pass)
+            -- try to read the password and pass it onward. if C-c
+            -- (SIGINT) is received during this block, the interrupt
+            -- handler will make the blocked thread win the race and
+            -- abort the `hGetLine`
+            let tryReadPass :: IO (Either () C8.ByteString)
+                tryReadPass = withoutISig $ withMVar readPassMVar $ \() ->
+                  race
+                    (takeMVar readPassMVar)
+                    (C8.hGetLine stdin)
+            eResult <- catchingKeyboardInterrupts readPassMVar tryReadPass
+            case eResult of
+              Left () -> do
+                -- start the reader again.
+                writeChan ctlChan CtlSignal
+                -- send C-c to the terminal
+                C8.hPutStr masterH "\0003"
+                pure ("", Nothing)
+              Right pass -> do
+                C8.hPutStrLn masterH pass
+                -- start the reader again.
+                writeChan ctlChan CtlSignal
+                pure ("", Just pass)
       _ -> pure (buf', mpass)
-  writeLoop masterH buf'' mpass' regex ctlChan syncChan
+  writeLoop masterH buf'' mpass' regex ctlChan syncChan readPassMVar
+
+catchingKeyboardInterrupts :: MVar () -> IO a -> IO a
+catchingKeyboardInterrupts readPassMVar act =
+  catchKeyboardInterrupts >> act `finally` removeHandler
+  where
+    catchKeyboardInterrupts = installHandler keyboardSignal (Catch (putMVar readPassMVar () >> void removeHandler)) Nothing
+    removeHandler = installHandler keyboardSignal Default Nothing
+
+withoutISig :: IO a -> IO a
+withoutISig act = do
+  termAttrs <- getTerminalAttributes stdInput
+  let termAttrs' = withMode termAttrs KeyboardInterrupts
+  finally (setTerminalAttributes stdInput termAttrs' Immediately >> act) (setTerminalAttributes stdInput termAttrs Immediately)
 
 main :: IO ()
 main = do
@@ -140,11 +177,12 @@ main = do
       R.execBlank
       "(\\[sudo\\] password for [0-9a-zA-Z_]+: |SUDO password: |BECOME password: )"
   pid <- forkProcess (slave slaveFd env cmd args)
+  readPassMVar <- newMVar ()
   -- no need for echo: our slave will tell us what to print
   handle
     ((\_ -> signalProcess softwareTermination pid) :: SomeException -> IO ()) $
     withoutEcho $
-    withAsync (supervisorLoop masterH "" Nothing regex) $ \_
+    withAsync (supervisorLoop masterH readPassMVar "" Nothing regex) $ \_
       -- resize the terminal
      -> do
       Just pty <- createPty masterFd
@@ -153,14 +191,14 @@ main = do
       masterPts <- getTerminalName stdInput
       void $
         getProcessStatus True False =<<
-        forkProcess
-          (executeFile
-             "/bin/sh"
-             True
-             [ "-c"
-             , "stty icrnl -ignpar -imaxbel -brkint -ixon -iutf8 -isig -opost -onlcr -iexten -echo -echoe -echok -echoctl -echoke < " <>
-               masterPts
-             ]
-             (Just env))
+          forkProcess
+            (executeFile
+               "/bin/sh"
+               True
+               [ "-c"
+               , "stty icrnl -ignpar -imaxbel -brkint -ixon -iutf8 -isig -opost -onlcr -iexten -echo -echoe -echok -echoctl -echoke < " <>
+                 masterPts
+               ]
+               (Just env))
       -- wait and cleanup
       void $ getProcessStatus True False pid
