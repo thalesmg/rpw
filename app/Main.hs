@@ -3,11 +3,13 @@
 
 module Main (main) where
 
-import           Control.Concurrent.Async     (withAsync, race)
+import           Control.Concurrent.Async     (race, withAsync)
 import           Control.Concurrent.Chan      (Chan, newChan, readChan,
                                                writeChan)
-import Control.Concurrent.MVar (MVar, newMVar, withMVar, takeMVar, putMVar)
-import           Control.Exception            (SomeException, bracket_, handle, finally)
+import           Control.Concurrent.MVar      (MVar, newMVar, putMVar, takeMVar,
+                                               withMVar)
+import           Control.Exception            (SomeException, bracket_, finally,
+                                               handle)
 import           Control.Monad                (forever, void)
 import qualified Data.ByteString.Char8        as C8
 import           System.Console.Terminal.Size (Window (..), size)
@@ -23,10 +25,15 @@ import           System.Posix.IO              (FdOption (..), OpenMode (..),
 import           System.Posix.Process         (createSession, executeFile,
                                                forkProcess, getProcessStatus)
 import           System.Posix.Pty             (createPty, resizePty)
-import           System.Posix.Signals         (signalProcess,
-                                               softwareTermination, installHandler, keyboardSignal, Handler(..))
-import           System.Posix.Terminal        (getTerminalName,
-                                               openPseudoTerminal, getTerminalAttributes, setTerminalAttributes, withMode, TerminalMode(..), TerminalState(..))
+import           System.Posix.Signals         (Handler (..), installHandler,
+                                               keyboardSignal, signalProcess,
+                                               softwareTermination)
+import           System.Posix.Terminal        (TerminalMode (..),
+                                               TerminalState (..),
+                                               getTerminalAttributes,
+                                               getTerminalName,
+                                               openPseudoTerminal,
+                                               setTerminalAttributes, withMode)
 import           System.Posix.Types           (Fd (..))
 import qualified Text.Regex.Posix.ByteString  as R
 

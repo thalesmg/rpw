@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -x
+
+BASEDIR=$(realpath $(dirname $(realpath $0))/../..)
+
+if [[ -n $interactive ]]
+then
+  DOCKER_FLAGS="-it"
+fi
+
+docker run --rm $DOCKER_FLAGS -e userid=$UID -v $BASEDIR:/mnt thalesmg/rpw_test:v2.0 "$@"

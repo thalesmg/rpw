@@ -13,7 +13,7 @@ addons:
     update: true
 
 before_install:
-  - docker pull thalesmg/rpw_test:v1.0
+  - docker pull thalesmg/rpw_test:v2.0
   - mkdir -p ~/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
@@ -23,7 +23,7 @@ install:
 
 script:
   - stack --no-terminal install --flag "rpw:rpw_dist" --local-bin-path "$PWD"
-  - docker run --rm -e userid=$UID -v $PWD:/mnt thalesmg/rpw_test:v1.0 /mnt/run_tests
+  - docker run --rm -e userid=$UID -v $PWD:/mnt thalesmg/rpw_test:v2.0 /mnt/run_tests
   - sha256sum rpw > rpw.sha256.txt
 
 deploy:

@@ -10,10 +10,10 @@ packages:
       size: 512
       sha256: d8901f7c8c42c767092262da42e1ff1911151310f4cd87f1ee278d168121ecee
   original:
-    hackage: posix-pty-0.2.1.1@sha256:f1e54f10c49d9f27dba33539391659d2daa4874badc1554ffc6c25b329ef1db6
+    hackage: posix-pty-0.2.1.1@sha256:f1e54f10c49d9f27dba33539391659d2daa4874badc1554ffc6c25b329ef1db6,2161
 snapshots:
 - completed:
-    size: 498398
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/13/23.yaml
-    sha256: 63151ca76f39d5cfbd266ce019236459fdda53fbefd2200aedeb33bcc81f808e
-  original: lts-13.23
+    size: 523700
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/7.yaml
+    sha256: 8e3f3c894be74d71fa4bf085e0a8baae7e4d7622d07ea31a52736b80f8b9bb1a
+  original: lts-14.7
