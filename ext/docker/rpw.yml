@@ -1,0 +1,9 @@
+version: "3"
+services:
+  rpw:
+    build: rpw
+    volumes:
+      - ../..:/mnt
+    environment:
+      - userid
+    command: tail -F README.md

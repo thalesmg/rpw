@@ -37,6 +37,14 @@ SUDO password: <- (rpw..cached)                   # no need to type here!
 
 ```
 
+## Testing
+
+You need `docker` and `docker-compose` for this:
+
+```bash
+make test
+```
+
 ## TODO
 
 - [ ] Allow resetting the password without exiting the shell.

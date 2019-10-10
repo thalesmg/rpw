@@ -1,0 +1,7 @@
+FROM haskell:8.6.5
+
+RUN apt update -q && \
+        apt install -qyy sudo python3 expect zsh bash && \
+        rm -rf /var/lib/apt/lists/*
+
+WORKDIR /mnt

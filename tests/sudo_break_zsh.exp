@@ -1,0 +1,52 @@
+#!/usr/bin/expect -f
+
+set prompt ":"
+set timeout 2
+set password $env(rpw_test_password)
+
+spawn -noecho env ZDOTDIR=$env(PWD)/tests/ rpw zsh
+set rpw_pid [exp_pid]
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect *
+expect {
+    $prompt { }
+    timeout { puts "startup error"; exit 1 }
+}
+expect *
+
+send "sudo echo oi\r"
+expect {
+    "sudo echo oi\r\n" { }
+    timeout { puts "timeout sending command"; exit 1 }
+}
+expect {
+    "(rpw..sudo) <- $" { }
+    timeout { puts "timeout waiting for prompt"; exit 1 }
+}
+
+# C-c
+exec sh -c "kill -2 $rpw_pid"
+
+sleep 1
+
+expect {
+    $prompt { }
+    timeout { puts "timeout after C-c"; exit 1 }
+}
+
+send "sudo echo olá\r"
+expect {
+    "sudo echo olá" { }
+    timeout { puts "timeout sending command"; exit 1 }
+}
+expect {
+    "(rpw..sudo) <- $" { }
+    timeout { puts "timeout waiting for prompt"; exit 1 }
+}
+
+send "$password\n"
+expect {
+    "olá\r\n" { }
+    timeout { puts "timeout expecting result"; exit 1 }
+}

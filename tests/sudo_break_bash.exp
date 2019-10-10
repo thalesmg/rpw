@@ -1,0 +1,50 @@
+#!/usr/bin/expect -f
+
+set prompt ":$"
+set timeout 2
+set password $env(rpw_test_password)
+
+spawn -noecho rpw bash
+set rpw_pid [exp_pid]
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect *
+send \n
+expect {
+    -re $prompt { }
+    timeout { puts "startup error"; exit 1 }
+}
+
+send "sudo echo oi\r"
+expect {
+    "sudo echo oi\r\n" { }
+    timeout { puts "timeout sending command"; exit 1 }
+}
+expect {
+    "(rpw..sudo) <- $" { }
+    timeout { puts "timeout waiting for prompt"; exit 1 }
+}
+
+# C-c
+exec sh -c "kill -2 $rpw_pid"
+
+expect {
+    -re $prompt { }
+    timeout { puts "timeout after C-c"; exit 1 }
+}
+
+send "sudo echo oi\r"
+expect {
+    "sudo echo oi\r\n" { }
+    timeout { puts "timeout sending command"; exit 1 }
+}
+expect {
+    "(rpw..sudo) <- $" { }
+    timeout { puts "timeout waiting for prompt"; exit 1 }
+}
+
+send "$password\n"
+expect {
+    "oi\r\n" { }
+    timeout { puts "timeout expecting result"; exit 1 }
+}
