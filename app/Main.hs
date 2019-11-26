@@ -182,7 +182,7 @@ main = do
     R.compile
       R.compExtended
       R.execBlank
-      "(\\[sudo\\] password for [0-9a-zA-Z_]+: |SUDO password: |BECOME password: )"
+      "(\\[sudo\\] password for [0-9a-zA-Z_]+: |SUDO password: |BECOME password: |Password:)"
   pid <- forkProcess (slave slaveFd env cmd args)
   readPassMVar <- newMVar ()
   -- no need for echo: our slave will tell us what to print
