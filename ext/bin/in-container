@@ -3,10 +3,11 @@
 set -x
 
 BASEDIR=$(realpath $(dirname $(realpath $0))/../..)
+DOCKER_IMAGE=${DOCKER_IMAGE:-thalesmg/rpw_test:v2.1}
 
 if [[ -n $interactive ]]
 then
   DOCKER_FLAGS="-it"
 fi
 
-docker run --rm $DOCKER_FLAGS -e userid=$UID -v $BASEDIR:/mnt thalesmg/rpw_test:v2.0 "$@"
+docker run --rm $DOCKER_FLAGS -e userid=$UID -v $BASEDIR:/mnt $DOCKER_IMAGE "$@"

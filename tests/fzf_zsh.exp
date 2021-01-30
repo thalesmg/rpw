@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+
+set prompt ":"
+set timeout 2
+
+spawn -noecho env ZDOTDIR=$env(PWD)/tests/ rpw zsh
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect *
+expect {
+    "$prompt" { }
+    timeout { puts "startup error"; exit 1 }
+}
+expect *
+
+send "echo oi\r"
+expect {
+    -re ".*echo oi.*" { }
+    timeout { puts "timeout sending command"; exit 1 }
+}
+expect {
+    -re ".*\r\noi.*$prompt" { }
+    timeout { puts "timeout while waiting echo"; exit 1 }
+}
+send "history | fzf --tac --no-sort\r"
+expect {
+    ">" { }
+    timeout { puts "timeout while choosing history"; exit 1 }
+}
+send "\033\[A"
+send "\r"
+
+expect {
+    -re "unset PROMPT_COMMAND; PS1=:" { puts "OK" }
+    timeout { puts "timeout after fzf exit"; exit 1 }
+}

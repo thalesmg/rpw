@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+
+set prompt ":$"
+set timeout 2
+
+spawn -noecho rpw bash
+
+send "unset PROMPT_COMMAND; PS1=:\r"
+expect *
+send \n
+expect -re $prompt
+
+send "echo oi\r"
+expect {
+    "echo oi\r\n" { }
+    timeout { puts "timeout after command"; exit 1 }
+}
+expect {
+    "oi\r\n" { }
+    timeout { puts "timeout while waiting echo"; exit 1 }
+}
+send "history | fzf --tac --no-sort\r"
+expect {
+    ">" { }
+    timeout { puts "timeout while choosing history"; exit 1 }
+}
+send "\033\[A"
+send "\r"
+
+expect {
+    "echo oi\r\n" { puts "OK" }
+    timeout { puts "timeout after fzf exit"; exit 1 }
+}

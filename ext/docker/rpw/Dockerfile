@@ -1,1 +1,1 @@
-FROM thalesmg/rpw_test:v2.0
+FROM thalesmg/rpw_test:v2.1

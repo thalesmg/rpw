@@ -1,5 +1,5 @@
 UID := $(shell id -u)
-DOCKER_IMAGE := thalesmg/rpw_test:v2.0
+DOCKER_IMAGE := thalesmg/rpw_test:v2.1
 
 build: app/Main.hs
 	docker-compose -f ext/docker/rpw.yml up -d rpw

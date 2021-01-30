@@ -37,11 +37,9 @@ import           System.Posix.Terminal        (TerminalMode (..),
 import           System.Posix.Types           (Fd (..))
 import qualified Text.Regex.Posix.ByteString  as R
 
-data CtlSignal =
-  CtlSignal
 
-data SyncSignal =
-  SyncSignal
+data CtlSignal = CtlSignal
+data SyncSignal = SyncSignal
 
 withoutEcho :: IO () -> IO ()
 withoutEcho act = do
@@ -50,13 +48,13 @@ withoutEcho act = do
 
 slave :: Fd -> [(String, String)] -> String -> [String] -> IO ()
 slave slaveFd env cmd args = do
-  ptsSlave <- getTerminalName slaveFd
+  slaveName <- getTerminalName slaveFd
   -- create a new session so the slave can become the controlling
   -- terminal and session leader.
   void createSession
   -- this is needed for job control and effectively opening the
   -- terminal.
-  slaveFd' <- openFd ptsSlave ReadWrite Nothing defaultFileFlags
+  slaveFd' <- openFd slaveName ReadWrite Nothing defaultFileFlags
   void $ dupTo slaveFd' stdInput
   void $ dupTo slaveFd' stdOutput
   void $ dupTo slaveFd' stdError
@@ -64,12 +62,14 @@ slave slaveFd env cmd args = do
   fdToHandle slaveFd' >>= flip hSetBuffering NoBuffering
   void $
     getProcessStatus True False =<<
-    forkProcess
-      (executeFile
-         "/bin/sh"
-         True
-         ["-c", "stty brkint ignpar imaxbel isig icanon < " <> ptsSlave]
-         (Just env))
+      forkProcess
+        (executeFile
+           "/bin/sh"
+           True
+           [ "-c"
+           , "stty sane < " <> slaveName
+           ]
+           (Just env))
   executeFile cmd True args (Just env)
 
 supervisorLoop ::
@@ -141,7 +141,7 @@ writeLoop masterH buf mpass regex ctlChan syncChan readPassMVar = do
                 C8.hPutStr masterH "\0003"
                 pure ("", Nothing)
               Right pass -> do
-                C8.hPutStrLn masterH pass
+                C8.hPutStrLn masterH (pass <> "\r")
                 -- start the reader again.
                 writeChan ctlChan CtlSignal
                 pure ("", Just pass)
@@ -158,7 +158,7 @@ catchingKeyboardInterrupts readPassMVar act =
 withoutISig :: IO a -> IO a
 withoutISig act = do
   termAttrs <- getTerminalAttributes stdInput
-  let termAttrs' = withMode termAttrs KeyboardInterrupts
+  let termAttrs' = foldr (flip withMode) termAttrs [KeyboardInterrupts, MapCRtoLF]
   finally (setTerminalAttributes stdInput termAttrs' Immediately >> act) (setTerminalAttributes stdInput termAttrs Immediately)
 
 main :: IO ()
@@ -171,7 +171,7 @@ main = do
         putStrLn "usage: rpw COMMAND ARG0 ARG1 ..."
         exitFailure
       (cmd:args) -> pure (cmd, args)
-  Just (Window height width) <- size
+  Just (Window currHeight currWidth) <- size
   (masterFd, slaveFd) <- openPseudoTerminal
   masterH <- fdToHandle masterFd
   hSetBuffering masterH NoBuffering
@@ -182,7 +182,7 @@ main = do
     R.compile
       R.compExtended
       R.execBlank
-      "(\\[sudo\\] password for [0-9a-zA-Z_]+: |SUDO password: |BECOME password: |Password:)"
+      "(\\[sudo\\] password for [0-9a-zA-Z_]+: |SUDO password: |BECOME password: )"
   pid <- forkProcess (slave slaveFd env cmd args)
   readPassMVar <- newMVar ()
   -- no need for echo: our slave will tell us what to print
@@ -193,7 +193,7 @@ main = do
       -- resize the terminal
      -> do
       Just pty <- createPty masterFd
-      resizePty pty (width, height)
+      resizePty pty (currWidth, currHeight)
       -- forward C-c to slave
       masterPts <- getTerminalName stdInput
       void $
@@ -203,8 +203,7 @@ main = do
                "/bin/sh"
                True
                [ "-c"
-               , "stty icrnl -ignpar -imaxbel -brkint -ixon -iutf8 -isig -opost -onlcr -iexten -echo -echoe -echok -echoctl -echoke < " <>
-                 masterPts
+               , "stty raw iutf8 < " <> masterPts
                ]
                (Just env))
       -- wait and cleanup
