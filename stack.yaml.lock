@@ -5,15 +5,15 @@
 
 packages:
 - completed:
-    hackage: posix-pty-0.2.1.1@sha256:f1e54f10c49d9f27dba33539391659d2daa4874badc1554ffc6c25b329ef1db6,2161
+    hackage: posix-pty-0.2.2@sha256:dd777df258b3b95fe01612c1204cde972ad1323c3289591ecc844ecb29e55e2b,1826
     pantry-tree:
       size: 512
-      sha256: d8901f7c8c42c767092262da42e1ff1911151310f4cd87f1ee278d168121ecee
+      sha256: 1165406e7998cf570fad6274a406c0e8c08357a1e60668f9cc8c0f269f457e30
   original:
-    hackage: posix-pty-0.2.1.1@sha256:f1e54f10c49d9f27dba33539391659d2daa4874badc1554ffc6c25b329ef1db6,2161
+    hackage: posix-pty-0.2.2@sha256:dd777df258b3b95fe01612c1204cde972ad1323c3289591ecc844ecb29e55e2b,1826
 snapshots:
 - completed:
-    size: 523700
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/7.yaml
-    sha256: 8e3f3c894be74d71fa4bf085e0a8baae7e4d7622d07ea31a52736b80f8b9bb1a
-  original: lts-14.7
+    size: 563100
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/17/0.yaml
+    sha256: e93a85871577ea3423d5f3454b2b6bd37c2c2123c79faf511dfb64f5b49a9f8b
+  original: lts-17.0
