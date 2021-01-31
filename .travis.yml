@@ -31,6 +31,7 @@ deploy:
   provider: releases
   token:
     secure: PvuwLzbX0ezJozcBENZ1g4zkxP9RBaRl9Xk0xAEyuL/Md5+OPTMm6h52QoCcmo+0dx4dTPA28F0r5v1XNPI2hlN6oFi7b+RBoesIZ9EYBkmwTlTMFRSkanIw0F6h9MeTodJXc/6qEOzu9vV114j/dpRtGFsXI6pKzkVV5NKTncIUzzaiN2MkQXm9pUm5RvY8vdzfDK1IIeMgCWalOjNOIS+J+QFlvMBVg/1N+y1BuK4vQfvm/++Ay+9+zku37dp4m6EwB+AYA3ZM7rheMfbbPlvPpUmcPa8PMf/blW1zEQm1f4IBcbinhaiHLxtuKBxL0cO9xesybbCfPk2xqqN2YPU2N2beLyt0qyk95+dtgkrdRrSN06PoLmQ/JVH8tpK/C+n7rHwY4Yp+/4X5YAPu4VvHTPgRYUM2Hx/nVlIW/V1xV4W68cDH5ExnYwDI4LsG6/M0d59Kn9+5QbGbIeFr8pxaQaKFEHz/kwmjLVpEbFJiHMj+ehQmrzUDkCb2A8zcYiWCfiRDSeup/KbhGtK7fQCpkWdGrJFLcV8LYvrRbkJU4aezxxZi3hA+HMzbG0MsVvjbLmW851lTnLKBTaIUJJL60QLgFFPRYjOa7Alx5GkvvDUylfl2hNrrXhWAPO2q/VbS+wlNvRQl0OSOh12+lFKFCOkuSJRVlFLH7mv918A=
+  edge: yes
   file:
     - rpw
     - rpw.sha256.txt
